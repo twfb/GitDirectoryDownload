@@ -12,8 +12,8 @@ from bs4 import BeautifulSoup
 
 # Proxy for download
 proxies = {
-#    "http": "socks5://172.22.192.1:9090",
-#    "https": "socks5://172.22.192.1:9090",
+    #    "http": "socks5://172.22.192.1:9090",
+    #    "https": "socks5://172.22.192.1:9090",
 }
 
 # Request url sleep time
@@ -27,6 +27,7 @@ headers = {
 }
 
 session = requests.Session()
+
 
 def get(url, absolute=False):
     time.sleep(sleep_time)
@@ -44,9 +45,8 @@ def get_file_info(url):
     soup = BeautifulSoup(get(url, absolute=True).text, "html.parser")
     for div in soup.select('div[role="rowheader"]'):
         a = div.select_one("a")
-        if a.text == '..':
-            continue
-        yield a["href"], a.text
+        if a.text != "..":
+            yield a["href"], a.text
 
 
 def download_file(url, dir_name, file_name):
@@ -79,10 +79,9 @@ def download_file(url, dir_name, file_name):
 
 
 def download_dir(dir_url, parent_dir=None):
-    dir_name = dir_url.strip('/').split("/")[-1]
+    dir_name = dir_url.strip("/").split("/")[-1]
     dir_name = "{}/{}".format(parent_dir, dir_name) if parent_dir else dir_name
     os.makedirs(dir_name, exist_ok=True)
-    threads = []
     for url, file_name in get_file_info(dir_url):
         threading.Thread(target=download_file, args=(url, dir_name, file_name)).start()
 
@@ -92,4 +91,5 @@ def main():
         download_dir(dir_url)
 
 
-main()
+if __name__ == "__main__":
+    main()
