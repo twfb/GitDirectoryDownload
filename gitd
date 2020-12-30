@@ -29,7 +29,7 @@ headers = {
 session = requests.Session()
 
 
-def get(url, absolute=False):
+def get(url):
     time.sleep(sleep_time)
     home_url = "https://github.com"
     if not url.startswith(home_url):
@@ -42,7 +42,7 @@ def get(url, absolute=False):
 
 
 def get_file_info(url):
-    soup = BeautifulSoup(get(url, absolute=True).text, "html.parser")
+    soup = BeautifulSoup(get(url).text, "html.parser")
     for div in soup.select('div[role="rowheader"]'):
         a = div.select_one("a")
         if a.text != "..":
