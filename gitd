@@ -12,8 +12,8 @@ from bs4 import BeautifulSoup
 
 # Proxy for download
 proxies = {
-    "http": "socks5://172.22.192.1:9090",
-    "https": "socks5://172.22.192.1:9090",
+#    "http": "socks5://172.22.192.1:9090",
+#    "https": "socks5://172.22.192.1:9090",
 }
 
 # Request url sleep time
