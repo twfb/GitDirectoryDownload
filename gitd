@@ -1,0 +1,93 @@
+#!/bin/python3
+
+import re
+import os
+import sys
+import requests
+import time
+import html
+import threading
+
+from bs4 import BeautifulSoup
+
+# Proxy for download
+proxies = {
+    "http": "socks5://172.22.192.1:9090",
+    "https": "socks5://172.22.192.1:9090",
+}
+
+# Request url sleep time
+sleep_time = 0.1
+
+# Download from raw url
+download_from_raw = False
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 Edg/87.0.664.66"
+}
+
+session = requests.Session()
+
+def get(url, absolute=False):
+    time.sleep(sleep_time)
+    home_url = "https://github.com"
+    if not url.startswith(home_url):
+        url = "{}{}".format(home_url, url)
+    return session.get(
+        url,
+        headers=headers,
+        proxies=proxies,
+    )
+
+
+def get_file_info(url):
+    soup = BeautifulSoup(get(url, absolute=True).text, "html.parser")
+    for div in soup.select('div[role="rowheader"]')[1:]:
+        a = div.select_one("a")
+        yield a["href"], a.text
+
+
+def download_file(url, dir_name, file_name):
+    file_path = "{}/{}".format(dir_name, file_name)
+    file_html = get(url).text
+    soup = BeautifulSoup(file_html, "html.parser")
+    raw_url = soup.select_one("#raw-url")
+    if not raw_url:
+        return download_dir(url, parent_dir=dir_name)
+
+    print("Downloading {}".format(file_path))
+    if download_from_raw:
+        content = get(raw_url["href"]).content
+    else:
+        table_html = "\n".join(
+            re.findall('(<td id="LC\d+".*?>.*?</td>)', file_html, re.S)
+        )
+        soup = BeautifulSoup("<pre>{}</pre>".format(table_html), "html.parser")
+        content = "\n".join(
+            [
+                td.text if td.text.strip("\t ") != "\n" else ""
+                for td in soup.select("td")
+            ]
+        )
+        content = content.encode("utf8")
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+    print("Downloaded {}".format(file_path))
+
+
+def download_dir(dir_url, parent_dir=None):
+    dir_name = dir_url.split("/")[-1]
+    dir_name = "{}/{}".format(parent_dir, dir_name) if parent_dir else dir_name
+    os.makedirs(dir_name, exist_ok=True)
+    threads = []
+    for url, file_name in get_file_info(dir_url):
+        threading.Thread(target=download_file, args=(url, dir_name, file_name)).start()
+
+
+def main():
+    for dir_url in sys.argv[1:]:
+        download_dir(dir_url)
+
+
+main()
