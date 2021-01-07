@@ -12,15 +12,15 @@ from bs4 import BeautifulSoup
 
 # Proxy for download
 proxies = {
-    #    "http": "socks5://172.22.192.1:9090",
-    #    "https": "socks5://172.22.192.1:9090",
+        "http": "socks5:// 172.23.64.1:9090",
+        "https": "socks5://172.23.64.1:9090",
 }
 
 # Request url sleep time
 sleep_time = 0.1
 
 # Download from raw url
-download_from_raw = False
+download_from_raw = True
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 Edg/87.0.664.66"
@@ -29,11 +29,11 @@ headers = {
 session = requests.Session()
 
 
-def get(url):
+def get(url, home_url=None, sleep_time=sleep_time):
     time.sleep(sleep_time)
-    home_url = "https://github.com"
-    if not url.startswith(home_url):
-        url = "{}{}".format(home_url, url)
+    url = "{}{}".format(home_url, url) if home_url else url
+    if download_from_raw:
+        url = url.replace('blob', 'raw')
     return session.get(
         url,
         headers=headers,
@@ -41,25 +41,32 @@ def get(url):
     )
 
 
-def get_file_info(url):
-    soup = BeautifulSoup(get(url).text, "html.parser")
+def get_file_path(home_url, dir_path):
+    soup = BeautifulSoup(get(dir_path, home_url=home_url).text, "html.parser")
     for div in soup.select('div[role="rowheader"]'):
         a = div.select_one("a")
-        if a.text != "..":
-            yield a["href"], a.text
+        file_name = a.text.strip()
+        if file_name != ".." and file_name != ". .":
+            yield dir_path + '/' + file_name
 
 
-def download_file(url, dir_name, file_name):
-    file_path = "{}/{}".format(dir_name, file_name)
-    file_html = get(url).text
+def download_file(home_url, file_path):
+    response = get(file_path, home_url=home_url)
+
+    if response.status_code % 100 > 3:
+        response = get(file_path, home_url=home_url, sleep_time=sleep_time + 1)
+        if response.status_code % 100 > 3:
+            print('Download {} Failed'.format(file_path))
+            return
+    file_html = response.text
     soup = BeautifulSoup(file_html, "html.parser")
     raw_url = soup.select_one("#raw-url")
     if not raw_url:
-        return download_dir(url, parent_dir=dir_name)
+        return download_dir(home_url, file_path)
 
     print("Downloading {}".format(file_path))
     if download_from_raw:
-        content = get(raw_url["href"]).content
+        content = get(raw_url["href"], home_url=home_url).content
     else:
         table_html = "\n".join(
             re.findall('(<td id="LC\d+".*?>.*?</td>)', file_html, re.S)
@@ -78,17 +85,19 @@ def download_file(url, dir_name, file_name):
     print("Downloaded {}".format(file_path))
 
 
-def download_dir(dir_url, parent_dir=None):
-    dir_name = dir_url.strip("/").split("/")[-1]
-    dir_name = "{}/{}".format(parent_dir, dir_name) if parent_dir else dir_name
-    os.makedirs(dir_name, exist_ok=True)
-    for url, file_name in get_file_info(dir_url):
-        threading.Thread(target=download_file, args=(url, dir_name, file_name)).start()
+def download_dir(home_url, dir_path):
+    os.makedirs(dir_path, exist_ok=True)
+    for file_path in get_file_path(home_url, dir_path):
+        threading.Thread(target=download_file, args=(home_url, file_path)).start()
 
 
 def main():
     for dir_url in sys.argv[1:]:
-        download_dir(dir_url)
+        dir_url = dir_url.strip('/')
+        dir_index = dir_url.rindex('/') + 1
+        home_url = dir_url[:dir_index] 
+        dir_path = dir_url[dir_index:]
+        download_dir(home_url, dir_path)
 
 
 if __name__ == "__main__":
