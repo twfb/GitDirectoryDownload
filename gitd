@@ -7,6 +7,7 @@ import requests
 import time
 import html
 import threading
+import argparse
 
 from bs4 import BeautifulSoup
 
@@ -17,7 +18,7 @@ proxies = {
 }
 
 # Download from raw url
-download_from_raw = True
+enable_raw = False
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 Edg/87.0.664.66"
@@ -52,6 +53,10 @@ def get_file_path(home_url, dir_path):
         if file_name != ".." and file_name != ". .":
             yield dir_path + "/" + file_name
 
+def is_file(file_html):
+    soup = BeautifulSoup(file_html, "html.parser")
+    return soup.select_one("#raw-url")
+
 
 def download_file(home_url, file_path):
     response = get(file_path, home_url=home_url)
@@ -61,13 +66,11 @@ def download_file(home_url, file_path):
         return
 
     file_html = response.text
-    soup = BeautifulSoup(file_html, "html.parser")
-    raw_url = soup.select_one("#raw-url")
-    if not raw_url:
+    if not is_file(file_html):
         return download_dir(home_url, file_path)
 
     print("Downloading {}".format(file_path))
-    if download_from_raw:
+    if enable_raw:
         response = get(raw_url["href"], home_url="https://github.com")
         if not response:
             return
@@ -91,10 +94,13 @@ def download_file(home_url, file_path):
 
 
 def download_dir(home_url, dir_path):
-    os.makedirs(dir_path, exist_ok=True)
-    for file_path in get_file_path(home_url, dir_path):
-        threading.Thread(target=download_file, args=(home_url, file_path)).start()
-
+    response = get(dir_path, home_url=home_url)
+    if not is_file(response.text):
+        os.makedirs(dir_path, exist_ok=True)
+        for file_path in get_file_path(home_url, dir_path):
+            threading.Thread(target=download_file, args=(home_url, file_path)).start()
+    else:
+        threading.Thread(target=download_file, args=(home_url, dir_path)).start()
 
 def main():
     for dir_url in sys.argv[1:]:
