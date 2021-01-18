@@ -18,7 +18,7 @@ proxies = {
 }
 
 # Download from raw url
-enable_raw = False
+enable_raw = True
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 Edg/87.0.664.66"
@@ -27,8 +27,9 @@ headers = {
 session = requests.Session()
 
 
-def get(url, home_url=None):
-    url = "{}{}".format(home_url, url) if home_url else url
+def get(url):
+    url = "{}{}".format('https://github.com', url) if 'https://' not in url else url
+    print(url)
 
     for i in range(5):
         try:
@@ -45,21 +46,22 @@ def get(url, home_url=None):
     print("Cannot get {}".format(url))
 
 
-def get_file_path(home_url, dir_path):
-    soup = BeautifulSoup(get(dir_path, home_url=home_url).text, "html.parser")
+def get_file_path_url(url, dir_path):
+    soup = BeautifulSoup(get(url).text, "html.parser")
     for div in soup.select('div[role="rowheader"]'):
         a = div.select_one("a")
         file_name = a.text.strip()
+        url = a.get("href")
         if file_name != ".." and file_name != ". .":
-            yield dir_path + "/" + file_name
+            yield dir_path + "/" + file_name, url
 
 def is_file(file_html):
     soup = BeautifulSoup(file_html, "html.parser")
     return soup.select_one("#raw-url")
 
 
-def download_file(home_url, file_path):
-    response = get(file_path, home_url=home_url)
+def download_file(file_path, url):
+    response = get(url)
 
     if not response:
         print("Download {} Failed".format(file_path))
@@ -67,11 +69,11 @@ def download_file(home_url, file_path):
 
     file_html = response.text
     if not is_file(file_html):
-        return download_dir(home_url, file_path)
+        return download_dir(file_path, url)
 
     print("Downloading {}".format(file_path))
     if enable_raw:
-        response = get(raw_url["href"], home_url="https://github.com")
+        response = get(raw_url["href"])
         if not response:
             return
         content = response.content
@@ -93,22 +95,73 @@ def download_file(home_url, file_path):
     print("Downloaded {}".format(file_path))
 
 
-def download_dir(home_url, dir_path):
-    response = get(dir_path, home_url=home_url)
-    if not is_file(response.text):
-        os.makedirs(dir_path, exist_ok=True)
-        for file_path in get_file_path(home_url, dir_path):
-            threading.Thread(target=download_file, args=(home_url, file_path)).start()
+def download_dir(dir_path, url):
+    response = get(url)
+    if is_file(response.text):
+        threading.Thread(target=download_file, args=(dir_path, url)).start()
     else:
-        threading.Thread(target=download_file, args=(home_url, dir_path)).start()
+        os.makedirs(dir_path, exist_ok=True)
+        for file_path, url in get_file_path_url(url, dir_path):
+            threading.Thread(target=download_file, args=(file_path, url)).start()
+
+class MyParse(argparse.ArgumentParser):
+    def print_help(self, file=None):
+        example_str = """
+Example: 
+  1. download by raw url: gitd -u \"https://github.com/twfb/git-directory-download\"
+  2. download by raw url: gitd -r -u \"https://github.com/twfb/git-directory-download\"
+  3. dowmload by parsing: gitd -p -u \"https://github.com/twfb/git-directory-download\"
+  4. download by raw url with proxy: gitd -r -u \"https://github.com/twfb/git-directory-download\" -p "socks6://127.0.0.1:7891"
+  
+"""
+        super().print_help(file)
+        print(example_str)
 
 def main():
-    for dir_url in sys.argv[1:]:
-        dir_url = dir_url.strip("/")
+    global enable_raw
+    global proxies
+    
+    parser = MyParse()
+
+    parser.add_argument(
+        "-u",
+        "--url",
+        help="github url, split by \",\", example: \"https://x, http://y\"",
+    )
+    
+    parser.add_argument(
+        "-r",
+        "--raw",
+        help="download from raw url",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--parse",
+        help="download by parsing html",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--proxy",
+        help="proxy config, example \"socks5://127.0.0.1:7891\"",
+    )
+    args = parser.parse_args()
+    enable_raw = args.raw or (not args.parse)
+    proxies = {
+        "http": args.proxy,
+        "https": args.proxy
+    }
+    if not args.url:
+        parser.print_help()
+        return
+
+    for dir_url in args.url.split(","):
+        dir_url = dir_url.strip().strip("/")
         dir_index = dir_url.rindex("/") + 1
-        home_url = dir_url[:dir_index]
         dir_path = dir_url[dir_index:]
-        download_dir(home_url, dir_path)
+        download_dir(dir_path, dir_url)
 
 
 if __name__ == "__main__":
