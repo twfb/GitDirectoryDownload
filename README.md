@@ -1,5 +1,6 @@
 # git-directory-download
 
+```
 usage: gitd [-h] [-u URL] [-r] [-p] [--proxy PROXY]
 
 optional arguments:
@@ -14,3 +15,4 @@ Example:
   2. download by raw url: gitd -r -u "https://github.com/twfb/git-directory-download"
   3. dowmload by parsing: gitd -p -u "https://github.com/twfb/git-directory-download"
   4. download by raw url with proxy: gitd -r -u "https://github.com/twfb/git-directory-download" -p "socks6://127.0.0.1:7891"
+```
