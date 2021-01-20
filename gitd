@@ -13,10 +13,7 @@ from markdownify import markdownify
 from bs4 import BeautifulSoup
 
 # Proxy for download
-proxies = {
-    #        "http": "socks5://127.0.0.1:7891",
-    #        "https": "socks5://127.0.0.1:7891",
-}
+proxies = {}
 
 # Download from raw url
 enable_raw = True
@@ -94,7 +91,9 @@ def download_file(file_path, url):
         raw_url = BeautifulSoup(file_html, "html.parser").select_one("#raw-url")
         response = get(raw_url["href"])
         if not response:
-            print("download {} failed with raw, try with parse".format(file_path))
+            print(
+                "download {} failed with raw, please try with parse".format(file_path)
+            )
             return
         content = response.content
     else:
@@ -135,7 +134,7 @@ Example:
   1. download by raw url: gitd -u \"https://github.com/twfb/git-directory-download\"
   2. download by raw url: gitd -r -u \"https://github.com/twfb/git-directory-download\"
   3. dowmload by parsing: gitd -p -u \"https://github.com/twfb/git-directory-download\"
-  4. download by raw url with proxy: gitd -r -u \"https://github.com/twfb/git-directory-download\" -p "socks6://127.0.0.1:7891"
+  4. download by raw url with proxy: gitd -r -u \"https://github.com/twfb/git-directory-download\" --proxy "socks5://127.0.0.1:7891"
   
 """
         super().print_help(file)
