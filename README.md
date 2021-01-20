@@ -1,7 +1,12 @@
 # git-directory-download
 
 ## Install
-`python3 -m pip install -r requirements.txt && chmod +x gitd && ./gitd`
+```
+git clone https://github.com/twfb/git-directory-download
+cd git-directory-download
+python3 -m pip install -r requirements.txt
+chmod +x gitd
+./gitd
 
 ## Usage
 ```
