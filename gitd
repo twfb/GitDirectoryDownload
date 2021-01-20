@@ -9,6 +9,7 @@ import html
 import threading
 import argparse
 
+from markdownify import markdownify
 from bs4 import BeautifulSoup
 
 # Proxy for download
@@ -28,7 +29,7 @@ session = requests.Session()
 
 
 def get(url):
-    url = "{}{}".format('https://github.com', url) if 'https://' not in url else url
+    url = "{}{}".format("https://github.com", url) if "https://" not in url else url
 
     for i in range(5):
         try:
@@ -54,9 +55,27 @@ def get_file_path_url(url, dir_path):
         if file_name != ".." and file_name != ". .":
             yield dir_path + "/" + file_name, url
 
+
 def is_file(file_html):
     soup = BeautifulSoup(file_html, "html.parser")
     return soup.select_one("#raw-url")
+
+
+def parse_readme(html, file_type):
+    if file_type not in ['md', 'rst']:
+        return 
+
+    html = (
+        re.search("<article.*?>(.*?)</article>", html, re.S)
+        .groups()[0]
+        .replace("\n", "")
+    )
+
+    if file_type == "md":
+        return markdownify(html)
+
+    if file_type == "rst":
+        return BeautifulSoup(html, "html.parser").text
 
 
 def download_file(file_path, url):
@@ -74,19 +93,23 @@ def download_file(file_path, url):
     if enable_raw:
         response = get(raw_url["href"])
         if not response:
+            print("download {} failed with raw, try with parse".format(file_path))
             return
         content = response.content
     else:
-        table_html = "\n".join(
-            re.findall('(<td id="LC\d+".*?>.*?</td>)', file_html, re.S)
-        )
-        soup = BeautifulSoup("<pre>{}</pre>".format(table_html), "html.parser")
-        content = "\n".join(
-            [
-                td.text if td.text.strip("\t ") != "\n" else ""
-                for td in soup.select("td")
-            ]
-        )
+        file_type = file_path.split(".")[-1]
+        content = parse_readme(file_html, file_type)
+        if not content:
+            table_html = "\n".join(
+                re.findall('(<td id="LC\d+".*?>.*?</td>)', file_html, re.S)
+            )
+            soup = BeautifulSoup("<pre>{}</pre>".format(table_html), "html.parser")
+            content = "\n".join(
+                [
+                    td.text if td.text.strip("\t ") != "\n" else ""
+                    for td in soup.select("td")
+                ]
+            )
         content = content.encode("utf8")
 
     with open(file_path, "wb") as f:
@@ -103,6 +126,7 @@ def download_dir(dir_path, url):
         for file_path, url in get_file_path_url(url, dir_path):
             threading.Thread(target=download_file, args=(file_path, url)).start()
 
+
 class MyParse(argparse.ArgumentParser):
     def print_help(self, file=None):
         example_str = """
@@ -116,18 +140,19 @@ Example:
         super().print_help(file)
         print(example_str)
 
+
 def main():
     global enable_raw
     global proxies
-    
+
     parser = MyParse()
 
     parser.add_argument(
         "-u",
         "--url",
-        help="github url, split by \",\", example: \"https://x, http://y\"",
+        help='github url, split by ",", example: "https://x, http://y"',
     )
-    
+
     parser.add_argument(
         "-r",
         "--raw",
@@ -144,14 +169,11 @@ def main():
 
     parser.add_argument(
         "--proxy",
-        help="proxy config, example \"socks5://127.0.0.1:7891\"",
+        help='proxy config, example "socks5://127.0.0.1:7891"',
     )
     args = parser.parse_args()
     enable_raw = args.raw or (not args.parse)
-    proxies = {
-        "http": args.proxy,
-        "https": args.proxy
-    }
+    proxies = {"http": args.proxy, "https": args.proxy}
     if not args.url:
         parser.print_help()
         return

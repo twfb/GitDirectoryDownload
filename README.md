@@ -1,5 +1,8 @@
 # git-directory-download
 
+## Install
+`python3 -m pip install -r requirements.txt && ./gitd`
+
 ```
 usage: gitd [-h] [-u URL] [-r] [-p] [--proxy PROXY]
 
