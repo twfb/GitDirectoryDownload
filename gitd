@@ -62,8 +62,8 @@ def is_file(file_html):
 
 
 def parse_readme(html, file_type):
-    if file_type not in ['md', 'rst']:
-        return 
+    if file_type not in ["md", "rst"]:
+        return
 
     html = (
         re.search("<article.*?>(.*?)</article>", html, re.S)
@@ -91,6 +91,7 @@ def download_file(file_path, url):
 
     print("Downloading {}".format(file_path))
     if enable_raw:
+        raw_url = BeautifulSoup(file_html, "html.parser").select_one("#raw-url")
         response = get(raw_url["href"])
         if not response:
             print("download {} failed with raw, try with parse".format(file_path))
