@@ -1,7 +1,7 @@
 # git-directory-download
 
 ## Install
-`python3 -m pip install -r requirements.txt && ./gitd`
+`python3 -m pip install -r requirements.txt && chmod +x gitd && ./gitd`
 
 ## Usage
 ```
