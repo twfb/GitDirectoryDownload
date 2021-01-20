@@ -2,7 +2,7 @@
 
 ## Install
 ```
-git clone https://github.com/twfb/git-directory-download
+git clone https://github.com/twfb/git-directory-download.git
 cd git-directory-download
 python3 -m pip install -r requirements.txt
 chmod +x gitd
