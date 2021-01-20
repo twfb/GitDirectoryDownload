@@ -7,8 +7,10 @@ cd git-directory-download
 python3 -m pip install -r requirements.txt
 chmod +x gitd
 ./gitd
+```
 
 ## Usage
+
 ```
 usage: gitd [-h] [-u URL] [-r] [-p] [--proxy PROXY]
 
