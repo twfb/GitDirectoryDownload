@@ -29,7 +29,6 @@ session = requests.Session()
 
 def get(url):
     url = "{}{}".format('https://github.com', url) if 'https://' not in url else url
-    print(url)
 
     for i in range(5):
         try:
