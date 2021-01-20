@@ -18,5 +18,5 @@ Example:
   1. download by raw url: gitd -u "https://github.com/twfb/git-directory-download"
   2. download by raw url: gitd -r -u "https://github.com/twfb/git-directory-download"
   3. dowmload by parsing: gitd -p -u "https://github.com/twfb/git-directory-download"
-  4. download by raw url with proxy: gitd -r -u "https://github.com/twfb/git-directory-download" -p "socks6://127.0.0.1:7891"
+  4. download by raw url with proxy: gitd -r -u "https://github.com/twfb/git-directory-download" --proxy "socks5://127.0.0.1:7891"
 ```
