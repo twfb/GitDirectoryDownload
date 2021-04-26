@@ -1,3 +1,4 @@
 html2markdown
+markdownify
 bs4
 requests
